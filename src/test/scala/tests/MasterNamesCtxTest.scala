@@ -1,18 +1,18 @@
 package tests
 
-import com.github.rgafiyatullin.creek_xml_binary.NamesCtx
+import com.github.rgafiyatullin.creek_xml_binary.{MasterNamesCtx, StreamEvent}
 import org.scalatest.{FlatSpec, Matchers}
 
-class NamesCtxTest extends FlatSpec with Matchers {
-  val emptyCtx = NamesCtx.create(5)
+class MasterNamesCtxTest extends FlatSpec with Matchers {
+  val emptyCtx = MasterNamesCtx.create(5)
 
-  def matchEventAdd(s: String): NamesCtx.Event => Boolean = {
-      case NamesCtx.Add(`s`, _) => true
+  def matchEventAdd(s: String): StreamEvent.NameOperation => Boolean = {
+      case StreamEvent.NameAdd(_, `s`) => true
       case _ => false
     }
 
-  def matchEventRemove(s: String): NamesCtx.Event => Boolean = {
-    case NamesCtx.Remove(`s`, _) => true
+  def matchEventRemove(s: String): StreamEvent.NameOperation => Boolean = {
+    case StreamEvent.NameRemove(_, `s`) => true
     case _ => false
   }
 
