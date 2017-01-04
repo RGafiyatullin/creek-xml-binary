@@ -1,4 +1,4 @@
-package com.github.rgafiyatullin.creek_xml_binary
+package com.github.rgafiyatullin.creek_xml_binary.decoder
 
 import java.nio.ByteBuffer
 
@@ -13,7 +13,11 @@ final case class DecoderBuffer(q: Queue[Array[Byte]] = Queue.empty) {
 
   def get(nBytes: Int): (Option[Array[Byte]], DecoderBuffer) =
     q.headOption match {
-      case None => (None, this)
+      case None =>
+        if (nBytes > 0)
+          (None, this)
+        else
+          (Some(Array()), this)
       case Some(chunk) =>
         val q1 = q.drop(1)
 

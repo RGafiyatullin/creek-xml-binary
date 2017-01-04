@@ -1,4 +1,4 @@
-package com.github.rgafiyatullin.creek_xml_binary
+package com.github.rgafiyatullin.creek_xml_binary.decoder
 
 final case class SlaveNamesCtx(i2s: Map[Int, String] = Map.empty, s2i: Map[String, Int] = Map.empty) {
   def addResolution(id: Int, str: String): SlaveNamesCtx = copy(i2s = i2s + (id -> str), s2i = s2i + (str -> id))

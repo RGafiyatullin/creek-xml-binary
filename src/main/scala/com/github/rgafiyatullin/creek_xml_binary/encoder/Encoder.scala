@@ -1,8 +1,9 @@
-package com.github.rgafiyatullin.creek_xml_binary
+package com.github.rgafiyatullin.creek_xml_binary.encoder
 
 import java.nio.ByteBuffer
 
 import com.github.rgafiyatullin.creek_xml.common.{Attribute, HighLevelEvent}
+import com.github.rgafiyatullin.creek_xml_binary.StreamEvent
 
 import scala.collection.immutable.Queue
 

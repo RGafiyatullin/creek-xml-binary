@@ -1,6 +1,7 @@
 package tests
 
-import com.github.rgafiyatullin.creek_xml_binary.{MasterNamesCtx, StreamEvent}
+import com.github.rgafiyatullin.creek_xml_binary.StreamEvent
+import com.github.rgafiyatullin.creek_xml_binary.encoder.MasterNamesCtx
 import org.scalatest.{FlatSpec, Matchers}
 
 class MasterNamesCtxTest extends FlatSpec with Matchers {

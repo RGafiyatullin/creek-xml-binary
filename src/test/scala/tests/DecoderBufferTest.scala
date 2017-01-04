@@ -1,6 +1,6 @@
 package tests
 
-import com.github.rgafiyatullin.creek_xml_binary.DecoderBuffer
+import com.github.rgafiyatullin.creek_xml_binary.decoder.DecoderBuffer
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.immutable.Queue
@@ -10,6 +10,10 @@ class DecoderBufferTest extends FlatSpec with Matchers {
 
   "decoder buffer" should "accept chunks and return slices of requested sizes" in {
     val db0 = DecoderBuffer.empty
+
+    val (emptyArray, _) = db0.get(0)
+    emptyArray should contain (Array())
+
     val chunksIn =
       for {i <- 0 until 10}
         yield (for {j <- 0 until 10} yield (i * 10 + j).toByte).toArray
@@ -33,5 +37,4 @@ class DecoderBufferTest extends FlatSpec with Matchers {
     db6flat.q.size should be(1)
     db6flat.q.headOption should contain(a(40,99))
   }
-
 }

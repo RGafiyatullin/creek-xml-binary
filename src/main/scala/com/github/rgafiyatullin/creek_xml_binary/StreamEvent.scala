@@ -2,6 +2,8 @@ package com.github.rgafiyatullin.creek_xml_binary
 
 import java.nio.ByteBuffer
 
+import scala.util.Try
+
 sealed trait StreamEvent {
   import StreamEvent._
 
@@ -20,8 +22,8 @@ sealed trait StreamEvent {
     val size = bs.map(_.length).sum
     val bb = ByteBuffer
       .allocate(size + 4)
-      .put(encoding.twoByteInt(typeId))
       .put(encoding.twoByteInt(size))
+      .put(encoding.twoByteInt(typeId))
 
     bs.foreach(bb.put)
 
@@ -61,9 +63,22 @@ sealed trait StreamEvent {
 }
 
 object StreamEvent {
-  private object encoding {
-    private val csUtf8 = java.nio.charset.Charset.forName("UTF-8")
 
+  def decode(tid: Int, bytes: Array[Byte]): Option[StreamEvent] =
+    tid match {
+      case 1 => NameAdd.decode(bytes)
+      case 2 => NameRemove.decode(bytes)
+      case 3 => OpenElementStart.decode(bytes)
+      case 4 => OpenElementEnd.decode(bytes)
+      case 5 => CloseElement.decode(bytes)
+      case 6 => ElementUnprefixedAttribute.decode(bytes)
+      case 7 => CData.decode(bytes)
+      case 8 => PCData.decode(bytes)
+    }
+
+  private val csUtf8 = java.nio.charset.Charset.forName("UTF-8")
+
+  private object encoding {
     def twoByteInt(i: Int): Array[Byte] = {
       val lo = (i % 256).toByte
       val hi = ((i / 256) % 256).toByte
@@ -81,16 +96,96 @@ object StreamEvent {
     }
   }
 
+  private object decoding {
+    def lenPrefixedStr(bytes: Array[Byte]): Option[(String, Array[Byte])] =
+      for {
+        (size, bytes1) <- twoByteInt(bytes)
+        (strBytes, bytes2) <-
+          if (bytes1.length >= size)
+            Some(bytes1.slice(0, size), bytes1.slice(size, bytes1.length))
+          else
+            None
+        str <- Try(new String(strBytes, csUtf8)).toOption
+      }
+        yield (str, bytes2)
+
+    def twoByteInt(bytes: Array[Byte]): Option[(Int, Array[Byte])] =
+      if (bytes.length >= 2) {
+        val lo = bytes(0)
+        val hi = bytes(1)
+        val remainder = bytes.slice(2, bytes.length)
+
+        Some(lo + hi * 256, remainder)
+      }
+      else None
+  }
+
 
   sealed trait NameOperation extends StreamEvent
 
   final case class NameAdd(id: Int, name: String) extends NameOperation
+  object NameAdd {
+    def decode(bytes: Array[Byte]): Option[NameAdd] =
+      for {
+        (id, bytes1) <- decoding.twoByteInt(bytes)
+        (name, _) <- decoding.lenPrefixedStr(bytes1)
+      }
+        yield NameAdd(id, name)
+  }
+
   final case class NameRemove(id: Int, name: String) extends NameOperation
+  object NameRemove {
+    def decode(bytes: Array[Byte]): Option[NameRemove] =
+      for {
+        (id, bytes1) <- decoding.twoByteInt(bytes)
+        (name, _) <- decoding.lenPrefixedStr(bytes1)
+      }
+        yield NameRemove(id, name)
+  }
 
   final case class OpenElementStart(nsId: Int, localNameId: Int) extends StreamEvent
+  object OpenElementStart {
+    def decode(bytes: Array[Byte]): Option[OpenElementStart] =
+      for {
+        (nsId, bytes1) <- decoding.twoByteInt(bytes)
+        (localNameId, _) <- decoding.twoByteInt(bytes1)
+      }
+        yield OpenElementStart(nsId, localNameId)
+  }
+
   final case class ElementUnprefixedAttribute(nameId: Int, value: String) extends StreamEvent
-  case object OpenElementEnd extends StreamEvent
-  case object CloseElement extends StreamEvent
+  object ElementUnprefixedAttribute {
+    def decode(bytes: Array[Byte]): Option[ElementUnprefixedAttribute] =
+      for {
+        (nameId, bytes1) <- decoding.twoByteInt(bytes)
+        (value, _) <- decoding.lenPrefixedStr(bytes1)
+      }
+        yield ElementUnprefixedAttribute(nameId, value)
+  }
+
+  case object OpenElementEnd extends StreamEvent {
+    def decode(bytes: Array[Byte]): Option[this.type] = Some(this)
+  }
+
+  case object CloseElement extends StreamEvent {
+    def decode(bytes: Array[Byte]): Option[this.type] = Some(this)
+  }
+
   final case class CData(value: String) extends StreamEvent
+  object CData {
+    def decode(bytes: Array[Byte]): Option[CData] =
+      for {
+        (value, _) <- decoding.lenPrefixedStr(bytes)
+      }
+        yield CData(value)
+  }
+
   final case class PCData(value: String) extends StreamEvent
+  object PCData {
+    def decode(bytes: Array[Byte]): Option[PCData] =
+      for {
+        (value, _) <- decoding.lenPrefixedStr(bytes)
+      }
+        yield PCData(value)
+  }
 }

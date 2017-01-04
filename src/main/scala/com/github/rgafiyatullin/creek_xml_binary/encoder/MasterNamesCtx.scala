@@ -1,4 +1,6 @@
-package com.github.rgafiyatullin.creek_xml_binary
+package com.github.rgafiyatullin.creek_xml_binary.encoder
+
+import com.github.rgafiyatullin.creek_xml_binary.StreamEvent
 
 import scala.collection.immutable.Queue
 
