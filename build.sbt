@@ -1,6 +1,6 @@
 name := "creek-xml-binary"
 
-version := "0.0.1"
+version := "0.0.2"
 
 scalaVersion in ThisBuild := "2.11.8"
 
@@ -16,7 +16,7 @@ lazy val commonSettings = Seq()
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.6",
-  "com.github.rgafiyatullin" %% "creek-xml" % "0.1.1"
+  "com.github.rgafiyatullin" %% "creek-xml" % "0.1.2"
 )
 
 lazy val creekXmpp = Project("creek-xml-binary", file("."))
