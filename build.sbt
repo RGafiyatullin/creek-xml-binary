@@ -1,6 +1,6 @@
 name := "creek-xml-binary"
 
-version := "0.0.2"
+version := "0.0.3"
 
 scalaVersion in ThisBuild := "2.11.8"
 

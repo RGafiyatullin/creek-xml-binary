@@ -3,11 +3,19 @@ package com.github.rgafiyatullin.creek_xml_binary.decoder
 import com.github.rgafiyatullin.creek_xml.common.HighLevelEvent.{CData, ElementClose, ElementOpen, PCData}
 import com.github.rgafiyatullin.creek_xml.common.{Attribute, HighLevelEvent, Position, QName}
 import com.github.rgafiyatullin.creek_xml_binary.StreamEvent
+import com.github.rgafiyatullin.creek_xml_binary.decoder.Decoder.DecoderError
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
 object Decoder {
+  sealed trait DecoderError extends Exception
+  object DecoderError {
+    final case class I2SResolutionFailure(id: Int, i2s: Map[Int, String]) extends DecoderError
+    final case class UnexpectedStreamEvent(streamEvent: StreamEvent, state: HighLevelState) extends DecoderError
+    final case class InvalidPacket(tid: Int, payload: Array[Byte]) extends DecoderError
+  }
+
   private val emptyPosition = Position.withoutPosition
 
   def create(): Decoder = Decoder()
@@ -39,24 +47,13 @@ object Decoder {
           Right(ElementClose(emptyPosition, "", qn.localName, qn.ns), copy(qNameStack = qNameStackNext))
 
         case StreamEvent.OpenElementStart(nsId, lnId) =>
-          val qnOption = for {
-              ln <- namesCtx.resolveI2S(lnId)
-              ns <- namesCtx.resolveI2S(nsId)
-            }
-              yield QName(ns, ln)
+          val ns = namesCtx.resolveI2S(nsId).getOrElse(throw DecoderError.I2SResolutionFailure(nsId, namesCtx.i2s))
+          val ln = namesCtx.resolveI2S(lnId).getOrElse(throw DecoderError.I2SResolutionFailure(lnId, namesCtx.i2s))
+          Left(HLSOpenning(qNameStack, QName(ns, ln), Queue.empty, namesCtx))
 
-          qnOption match {
-            case None =>
-              assert(false)
-              Left(this)
 
-            case Some(qn) =>
-              Left(HLSOpenning(qNameStack, qn, Queue.empty, namesCtx))
-          }
-
-        case _ =>
-          assert(false)
-          Left(this)
+        case unexpected =>
+          throw DecoderError.UnexpectedStreamEvent(unexpected, this)
       }
   }
   final case class HLSOpenning(qNameStack: List[QName], qName: QName, attributes: Queue[Attribute], namesCtx: SlaveNamesCtx) extends HighLevelState {
@@ -78,13 +75,11 @@ object Decoder {
               Left(copy(attributes = attributes.enqueue(attribute)))
 
             case None =>
-              assert(false)
-              Left(this)
+              throw DecoderError.I2SResolutionFailure(nameId, namesCtx.i2s)
           }
 
-        case _ =>
-          assert(false)
-          Left(this)
+        case unexpected =>
+          throw DecoderError.UnexpectedStreamEvent(unexpected, this)
       }
   }
 }
@@ -120,9 +115,8 @@ final case class Decoder(buffer: DecoderBuffer = DecoderBuffer.empty, highLevelS
     getEventBytes match {
       case (None, decoder) => (None, decoder)
       case (Some((tid, bytes)), decoder) =>
-        val maybeEvent = StreamEvent.decode(tid, bytes)
-        assert(maybeEvent.isDefined)
-        (maybeEvent, decoder)
+        val event = StreamEvent.decode(tid, bytes).getOrElse(throw DecoderError.InvalidPacket(tid, bytes))
+        (Some(event), decoder)
     }
 
   @tailrec
