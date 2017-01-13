@@ -11,9 +11,15 @@ import scala.collection.immutable.Queue
 object Decoder {
   sealed trait DecoderError extends Exception
   object DecoderError {
-    final case class I2SResolutionFailure(id: Int, i2s: Map[Int, String]) extends DecoderError
-    final case class UnexpectedStreamEvent(streamEvent: StreamEvent, state: HighLevelState) extends DecoderError
-    final case class InvalidPacket(tid: Int, payload: Array[Byte]) extends DecoderError
+    final case class I2SResolutionFailure(id: Int, i2s: Map[Int, String]) extends DecoderError {
+      override def getMessage: String = "Failed to resolve ID (%d) into name. Known resolutions: %s".format(id, i2s.toSeq.sortBy(_._1))
+    }
+    final case class UnexpectedStreamEvent(streamEvent: StreamEvent, state: HighLevelState) extends DecoderError {
+      override def getMessage: String = "Unexpected stream event %s while in state %s".format(streamEvent, state)
+    }
+    final case class InvalidPacket(tid: Int, payload: Array[Byte]) extends DecoderError {
+      override def getMessage: String = "Invalid packet [tid: %d; body: %s]".format(tid, payload.map(_ & 0xff).toSeq)
+    }
   }
 
   private val emptyPosition = Position.withoutPosition
