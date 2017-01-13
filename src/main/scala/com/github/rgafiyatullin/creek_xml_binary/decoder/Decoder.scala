@@ -95,7 +95,7 @@ final case class Decoder(buffer: DecoderBuffer = DecoderBuffer.empty, highLevelS
     def bigEndianInt(a: Seq[Byte]): Int =
       a.foldLeft[(Int, Int)](0, 1) {
         case ((acc, mult), byte) =>
-          (acc + mult * byte, mult * 256)
+          (acc + mult * (byte & 0xff), mult * 256)
       }._1
   }
 

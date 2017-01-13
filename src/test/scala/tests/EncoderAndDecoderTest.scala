@@ -74,9 +74,60 @@ class EncoderAndDecoderTest extends FlatSpec with Matchers {
     bb.get(encodedBytes)
 
     print("Array: [")
-    for {b <- encodedBytes}
+    for {b <- encodedBytes.map(_ & 0xff)}
       print("%d ".format(b))
     println("]")
+
+    val decoder0 = Decoder.create()
+    val decoder1 = decoder0.putBytes(encodedBytes)
+
+    val decodedStreamEvents = keepDecodingStreamEvents(Queue.empty, decoder1)
+    println("Decoded stream events: [")
+    for {e <- decodedStreamEvents}
+      println("- %s".format(e))
+    println("]")
+
+    val decodedHighLevelEvents = keepDecodingHLEvents(Queue.empty, decoder1)
+
+    println("Decoded HL events: [")
+    for {e <- decodedHighLevelEvents}
+      println("- %s".format(e))
+    println("]")
+
+
+    decodedHighLevelEvents.foldLeft(NodeBuilder.empty)(_.in(_)).nodeOption should contain (xml)
+  }
+
+  "router error reply" should "encode and decode" in {
+    /*
+      <iq id='route:793a6262-4d42-431d-9c89-ad758fe9802d' type='error' xmlns='jabber:client'>
+        <error xmlns='jabber:client'>
+          <undefined-condition xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+          <text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'><![CDATA[router: no action succeeded]]></text>
+          <error-condition xmlns='http://wargaming.net/xmpp/router-service#condition'>
+            <report xmlns='http://wargaming.net/xmpp/router-service#condition'><![CDATA[	To-JID: 'wot-clans@$muc-sync.xmppcs.dev'\n	Stanza: [ns: jabber:client; ncn: message]\n	Matched rule:\n		catch_all_case = 'true'\n]]></report>
+          </error-condition>
+        </error>
+      </iq>
+     */
+    val xml = CData("\tTo-JID: 'wot-clans@$muc-sync.xmppcs.dev'\n\tStanza: [ns: jabber:client; ncn: message]\n\tMatched rule:\n\t\tcatch_all_case = 'true'\n")
+    val events = xml.toEvents
+    val encoder0 = Encoder.create(64)
+    val bb = ByteBuffer.allocate(2048)
+    events.foldLeft(encoder0) {
+      case (encIn, event) =>
+        val (bytes, encOut) = encIn.encode(event)
+        bb.put(bytes)
+        encOut
+    }
+    val encodedBytes = Array.fill[Byte](bb.capacity() - bb.remaining())(0)
+    bb.flip()
+    bb.get(encodedBytes)
+
+    print("Array: [")
+    for (b <- encodedBytes.map(_ & 0xff))
+      println("- %d".format(b))
+    print("]")
 
     val decoder0 = Decoder.create()
     val decoder1 = decoder0.putBytes(encodedBytes)
